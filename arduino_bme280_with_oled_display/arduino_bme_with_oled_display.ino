@@ -12,36 +12,41 @@ Adafruit_BME280 bme;
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-struct SensorData{
+struct SensorData
+{
   float temperature;
   float humidity;
   float pressure;
   float altitude;
 };
-void setup(){
+
+void setup()
+{
   Serial.begin(9600);
   Wire.begin();
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  if (!bme.begin(0x76)) {  // o 0x77, según tu módulo
-  Serial.println("❌ No se detecta el BME280!");
-  while (1);
-}
+  if (!bme.begin(0x76))
+  { // o 0x77, según tu módulo
+    Serial.println("❌ No se detecta el BME280!");
+    while (1)
+      ;
+  }
   // Configure sensor sampling mode
   bme.setSampling(
-    Adafruit_BME280::MODE_FORCED,     // Forced mode = single measurement per trigger
-    Adafruit_BME280::SAMPLING_X1,     // Temperature oversampling
-    Adafruit_BME280::SAMPLING_X1,     // Pressure oversampling
-    Adafruit_BME280::SAMPLING_X1,     // Humidity oversampling
-    Adafruit_BME280::FILTER_OFF       // No filtering
+      Adafruit_BME280::MODE_FORCED, // Forced mode = single measurement per trigger
+      Adafruit_BME280::SAMPLING_X1, // Temperature oversampling
+      Adafruit_BME280::SAMPLING_X1, // Pressure oversampling
+      Adafruit_BME280::SAMPLING_X1, // Humidity oversampling
+      Adafruit_BME280::FILTER_OFF   // No filtering
   );
 }
 
-void loop(){  
+void loop()
+{
   SensorData data = getValues();
   display_sensor_values(data);
   delay(5000);
 }
-
 
 SensorData getValues()
 {
@@ -50,12 +55,13 @@ SensorData getValues()
   SensorData data;
   data.temperature = bme.readTemperature();
   data.humidity = bme.readHumidity();
-  data.pressure =  bme.readPressure() / 100.0F;  // Convert Pa → hPa
+  data.pressure = bme.readPressure() / 100.0F; // Convert Pa → hPa
   data.altitude = bme.readAltitude(SEALEVELPRESSURE_HPA);
   return data;
 }
 
-void display_sensor_values(SensorData data){
+void display_sensor_values(SensorData data)
+{
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -72,7 +78,7 @@ void display_sensor_values(SensorData data){
   display.print(data.temperature, 1); // one decimal
   display.setTextSize(1);
   display.cp437(true);
-  display.write(167);  // degree symbol
+  display.write(167); // degree symbol
   display.print("C");
 
   // Humidity (big)
@@ -90,7 +96,7 @@ void display_sensor_values(SensorData data){
   display.setCursor(72, 0);
   display.print("P:");
   display.setCursor(90, 0);
-  display.print(data.pressure, 0);  // no decimals
+  display.print(data.pressure, 0); // no decimals
   display.print("hPa");
 
   // Altitude (small)
@@ -101,6 +107,4 @@ void display_sensor_values(SensorData data){
   display.print("m");
 
   display.display();
-
-
 }
