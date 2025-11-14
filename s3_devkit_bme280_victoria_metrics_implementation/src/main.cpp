@@ -51,23 +51,17 @@ void setup()
     delay(500);
     WiFi.setTxPower(WIFI_POWER_8_5dBm); // menor potencia = menos interferencia
     WiFi.begin(ssid, password);
-    Serial.print("Connecting to WiFi");
     while (WiFi.status() != WL_CONNECTED)
     {
         delay(500);
-        Serial.print(".");
     }
-    Serial.println("\nConnected!");
 
     Wire.begin(SDA_PIN, SCL_PIN);
 
     bme.begin();
     // Initialize BME280 sensor
-    Serial.println(F("Initializing BME280..."));
     if (!bme.begin(BME280_ADDRESS))
     {
-        Serial.println(F("❌ Could not find a valid BME280 sensor!"));
-        Serial.println(F("Check wiring or try address 0x77."));
         while (1)
             ; // Stop here if sensor not found
     }
@@ -79,7 +73,6 @@ void setup()
         Adafruit_BME280::SAMPLING_X1, // Humidity oversampling
         Adafruit_BME280::FILTER_OFF   // No filtering
     );
-    Serial.println(F("✅ BME280 initialized successfully!\n"));
     delay(500);
 
     display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
@@ -96,14 +89,10 @@ SensorData get_bme280_values()
     return data;
 }
 
-void display_sensor_values(SensorData data)
+void display_sensor_values(const SensorData &data)
 {
     display.clearDisplay();
-    display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-
-    display.clearDisplay();
 
     // Temperature (big)
     display.setTextSize(1);
@@ -138,42 +127,29 @@ void display_sensor_values(SensorData data)
     display.display();
 }
 
-void send_data_to_victoria_metrics(SensorData data)
+void send_data_to_victoria_metrics(const SensorData &data)
 {
-    if (WiFi.status() == WL_CONNECTED)
+    if (WiFi.status() != WL_CONNECTED)
     {
-        HTTPClient http;
-        http.begin(serverName);
-        http.addHeader("Content-Type", "text/plain");
-
-        // ---- Create fake sensor data ----
-        float temperature = data.temperature; // 15–25°C
-        float humidity = data.humidity;       // 40–60%
-        float pressure = data.pressure;       // ~980–1020 hPa
-
-        // ---- Influx line protocol format ----
-        // measurement,tag=value field=value
-        String payload = "";
-        payload += "weather,sensor=bme280 temperature=" + String(temperature, 2) + "\n";
-        payload += "weather,sensor=bme280 humidity=" + String(humidity, 2) + "\n";
-        payload += "weather,sensor=bme280 pressure=" + String(pressure, 2);
-
-        // ---- Send the data ----
-        int httpResponseCode = http.POST(payload);
-
-        Serial.println("Sent payload:");
-        Serial.println(payload);
-        Serial.print("HTTP Response: ");
-        Serial.println(httpResponseCode);
-
-        http.end();
+        WiFi.reconnect();
+        delay(2000);
+        if (WiFi.status() != WL_CONNECTED)
+            return;
     }
-    else
-    {
-        Serial.println("WiFi disconnected!");
-    }
+    HTTPClient http;
+    http.begin(serverName);
+    http.addHeader("Content-Type", "text/plain");
 
-    delay(5000); // every 5 seconds
+    // ---- Influx line protocol format ----
+    // measurement,tag=value field=value
+    String payload = "";
+    payload += "WeatherScore,sensor=bme280_1 temperature=" + String(data.temperature, 2) + "\n";
+    payload += "WeatherScore,sensor=bme280_1 humidity=" + String(data.humidity, 2) + "\n";
+    payload += "WeatherScore,sensor=bme280_1 pressure=" + String(data.pressure, 2);
+
+    // ---- Send the data ----
+    int httpResponseCode = http.POST(payload);
+    http.end();
 }
 
 void loop()
